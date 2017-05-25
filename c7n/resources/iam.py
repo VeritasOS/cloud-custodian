@@ -807,6 +807,48 @@ class UserRemoveAccessKey(BaseAction):
                         AccessKeyId=k['AccessKeyId'])
 
 
+@User.action_registry.register('delete-login-profile')
+class UserDeleteLoginProfile(BaseAction):
+    """Delete users' login profile, disabling password login.
+
+    For example to delete passwords for all users
+
+    .. code-block: yaml
+
+     - name: iam-delete-password-no-login
+       resource: iam-user
+       actions:
+         - delete-login-profile
+
+    Or, to delete passwords for all users who haven't logged
+    in using their passords in the last 90 days
+
+    .. code-block: yaml
+
+     - name: iam-delete-password-no-login
+       resource: iam-user
+       actions:
+         - type: delete-login-profile
+           age: 91
+    """
+
+    schema = type_schema('delete-login-profile', age={'type': 'number'})
+
+    def process(self, resources):
+        client = local_session(self.manager.session_factory).client('iam')
+
+        age = self.data.get('age')
+
+        if age:
+            threshold_date = datetime.datetime.now(tz=tzutc()) - timedelta(age)
+
+        for r in resources:
+            if age:
+                if not parse(r['c7n:credential-report']['password_last_used']) < threshold_date:
+                    continue
+            client.delete_login_profile(UserName=r['UserName'])
+
+
 #################
 #   IAM Groups  #
 #################
