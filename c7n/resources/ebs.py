@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import absolute_import, division, print_function, unicode_literals
+
 import logging
 import itertools
 import json
@@ -159,23 +161,39 @@ class SnapshotCrossAccountAccess(CrossAccountAccessFilter):
 
 @Snapshot.filter_registry.register('skip-ami-snapshots')
 class SnapshotSkipAmiSnapshots(Filter):
-    """Filter to remove snapshots of AMIs from results
+    """
+    Filter to remove snapshots of AMIs from results
 
     This filter is 'true' by default.
 
     :example:
 
+        .. implicit with no parameters, 'true' by default
         .. code-block: yaml
 
             policies:
               - name: delete-stale-snapshots
-                resource: ebs-snapshots
+                resource: ebs-snapshot
                 filters:
                   - type: age
                     days: 28
                     op: ge
-                  - skip-ami-snapshots: true
+                  - skip-ami-snapshots
 
+    :example:
+
+        .. explicit with parameter
+        .. code-block: yaml
+
+            policies:
+              - name: delete-snapshots
+                resource: ebs-snapshot
+                filters:
+                  - type: age
+                    days: 28
+                    op: ge
+                  - type: skip-ami-snapshots
+                    value: false
     """
 
     schema = type_schema('skip-ami-snapshots', value={'type': 'boolean'})

@@ -37,6 +37,8 @@ Actions:
    delivery.
 
 """
+from __future__ import absolute_import, division, print_function, unicode_literals
+
 import functools
 import json
 import itertools
@@ -162,7 +164,10 @@ def assemble_bucket(item):
                 log.warning(
                     "Bucket:%s unable to invoke method:%s error:%s ",
                     b['Name'], m, e.response['Error']['Message'])
-                return None
+                # We don't bail out, continue processing if we can.
+                # Note this can lead to missing data, but in general is cleaner than
+                # failing hard.
+                continue
         # As soon as we learn location (which generally works)
         if k == 'Location' and v is not None:
             b_location = v.get('LocationConstraint')
@@ -687,6 +692,10 @@ class ToggleLogging(BucketActionBase):
 class AttachLambdaEncrypt(BucketActionBase):
     """Action attaches lambda encryption policy to S3 bucket
 
+    supports attachment via lambda bucket notification or sns notification
+    to invoke lambda. a special topic value of `default` will utilize
+    an extant notification or create one matching the bucket name.
+
     :example:
 
         .. code-block: yaml
@@ -700,7 +709,9 @@ class AttachLambdaEncrypt(BucketActionBase):
                   - attach-encrypt
     """
     schema = type_schema(
-        'attach-encrypt', role={'type': 'string'}, topic={'type': 'string'})
+        'attach-encrypt',
+        role={'type': 'string'},
+        topic={'type': 'string'})
 
     permissions = (
         "s3:PutBucketNotification", "s3:GetBucketNotification",

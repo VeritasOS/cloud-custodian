@@ -42,6 +42,8 @@ Find rds instances that are not encrypted
            op: ne
 
 """
+from __future__ import absolute_import, division, print_function, unicode_literals
+
 import functools
 import itertools
 import logging
@@ -564,6 +566,73 @@ class TagTrim(tags.TagTrim):
             self.manager.session_factory).client('rds')
         arn = self.manager.generate_arn(resource['DBInstanceIdentifier'])
         client.remove_tags_from_resource(ResourceName=arn, TagKeys=candidates)
+
+
+def _elgibile_start_stop(db, state="available"):
+
+    if db.get('DBInstanceStatus') != state:
+        return False
+
+    if db.get('MultiAZ') is False:
+        return False
+
+    if db.get('ReadReplicaDBInstanceIdentifiers'):
+        return False
+
+    if db.get('ReadReplicaSourceDBInstanceIdentifier'):
+        return False
+
+    # TODO is SQL Server mirror is detectable.
+    return True
+
+
+@actions.register('stop')
+class Stop(BaseAction):
+    """Stop an rds instance.
+
+    https://goo.gl/N3nw8k
+    """
+
+    schema = type_schema('stop')
+
+    # permissions are unclear, and not currrently documented or in iam gen
+    permissions = ("rds:RebootDBInstance",)
+
+    def process(self, resources):
+        client = local_session(self.manager.session_factory).client('rds')
+        for r in filter(_elgibile_start_stop, resources):
+            try:
+                client.stop_db_instance(
+                    DBInstanceIdentifier=r['DBInstanceIdentifier'])
+            except ClientError as e:
+                log.exception(
+                    "Error stopping db instance:%s err:%s",
+                    r['DBInstanceIdentier'], e)
+
+
+@actions.register('start')
+class Start(BaseAction):
+    """Stop an rds instance.
+
+    https://goo.gl/N3nw8k
+    """
+
+    schema = type_schema('start')
+
+    # permissions are unclear, and not currrently documented or in iam gen
+    permissions = ("rds:RebootDBInstance",)
+
+    def process(self, resources):
+        client = local_session(self.manager.session_factory).client('rds')
+        start_filter = functools.partial(_elgibile_start_stop, state='stopped')
+        for r in filter(start_filter, resources):
+            try:
+                client.start_db_instance(
+                    DBInstanceIdentifier=r['DBInstanceIdentifier'])
+            except ClientError as e:
+                log.exception(
+                    "Error starting db instance:%s err:%s",
+                    r['DBInstanceIdentier'], e)
 
 
 @actions.register('delete')

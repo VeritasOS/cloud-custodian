@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import absolute_import, division, print_function, unicode_literals
+
 import datetime
 import json
 import logging
@@ -22,18 +24,55 @@ from collections import OrderedDict
 
 from botocore.exceptions import ClientError
 import boto3
-from common import BaseTest
+from .common import BaseTest
 
 from c7n.executor import MainThreadExecutor
 from c7n.filters import FilterValidationError
 from c7n.resources import rds
 from c7n import tags
 
-from common import BaseTest
-
 logger = logging.getLogger(name='c7n.tests')
 
+
 class RDSTest(BaseTest):
+
+    def test_rds_stop(self):
+        session_factory = self.replay_flight_data('test_rds_stop')
+        db_instance_id = 'rds-test-instance-1'
+        client = session_factory().client('rds')
+        p = self.load_policy({
+            'name': 'rds-stop',
+            'resource': 'rds',
+            'filters': [
+                {'DBInstanceIdentifier': db_instance_id}],
+            'actions': ['start']},
+            session_factory=session_factory)
+        resources = p.run()
+        self.assertEqual(len(resources), 1)
+        self.assertEqual(resources[0]['DBInstanceStatus'], 'available')
+        result = client.describe_db_instances(
+            DBInstanceIdentifier=db_instance_id)
+        self.assertEqual(
+            result['DBInstances'][0]['DBInstanceStatus'], 'stopping')
+
+    def test_rds_start(self):
+        session_factory = self.replay_flight_data('test_rds_start')
+        db_instance_id = 'rds-test-instance-2'
+        client = session_factory().client('rds')
+        p = self.load_policy({
+            'name': 'rds-stop',
+            'resource': 'rds',
+            'filters': [
+                {'DBInstanceIdentifier': db_instance_id}],
+            'actions': ['start']},
+            session_factory=session_factory)
+        resources = p.run()
+        self.assertEqual(len(resources), 1)
+        self.assertEqual(resources[0]['DBInstanceStatus'], 'stopped')
+        result = client.describe_db_instances(
+            DBInstanceIdentifier=db_instance_id)
+        self.assertEqual(
+            result['DBInstances'][0]['DBInstanceStatus'], 'starting')
 
     def test_rds_autopatch(self):
         session_factory = self.replay_flight_data('test_rds_auto_patch')
@@ -894,7 +933,7 @@ class TestRDSParameterGroupFilter(BaseTest):
                 'db-parameter')(fdata, policy.resource_manager)
             f_resources = f.process(resources)
             if not assertion(f_resources):
-                print len(f_resources), fdata, assertion
+                print(len(f_resources), fdata, assertion)
                 self.fail(err_msg)
 
 class Resize(BaseTest):

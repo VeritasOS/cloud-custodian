@@ -14,6 +14,7 @@
 """
 Resource Filtering Logic
 """
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 from datetime import datetime, timedelta
 import fnmatch
@@ -126,7 +127,7 @@ class FilterRegistry(PluginRegistry):
                     self.plugin_type, data))
         filter_class = self.get(filter_type)
         if filter_class is not None:
-            return filter_class(data, manager).validate()
+            return filter_class(data, manager)
         else:
             raise FilterValidationError(
                 "%s Invalid filter type %s" % (

@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 # PYTHON_ARGCOMPLETE_OK  (Must be in first 1024 bytes, so if tab completion
 # is failing, move this above the license)
@@ -24,7 +24,6 @@ import os
 import pdb
 import sys
 import traceback
-import utils
 from datetime import datetime
 from dateutil.parser import parse as date_parse
 
@@ -34,6 +33,7 @@ except ImportError:
     def setproctitle(t):
         return None
 
+from c7n import utils
 from c7n.commands import schema_completer
 from c7n.utils import get_account_id_from_sts
 
@@ -151,7 +151,7 @@ def _default_account_id(options):
 
 def _report_options(p):
     """ Add options specific to the report subcommand. """
-    _default_options(p, blacklist=['region', 'cache', 'log-group', 'quiet'])
+    _default_options(p, blacklist=['cache', 'log-group', 'quiet'])
     p.add_argument(
         '--days', type=float, default=1,
         help="Number of days of history to consider")
@@ -162,7 +162,8 @@ def _report_options(p):
         '--field', action='append', default=[], type=_key_val_pair,
         metavar='HEADER=FIELD',
         help='Repeatable. JMESPath of field to include in the output OR '
-        'for a tag use prefix `tag:`')
+        'for a tag use prefix `tag:`. Special case fields `region` and'
+        '`policy` are available')
     p.add_argument(
         '--no-default-fields', action="store_true",
         help='Exclude default fields for report.')
@@ -170,8 +171,6 @@ def _report_options(p):
         '--format', default='csv', choices=['csv', 'grid', 'simple'],
         help="Format to output data in (default: %(default)s). "
         "Options include simple, grid, rst")
-
-    p.set_defaults(regions=[])
 
 
 def _metrics_options(p):
