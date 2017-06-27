@@ -12,4 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-version = u"0.8.24.3"
+from c7n.query import QueryResourceManager
+from c7n.manager import resources
+
+
+@resources.register('iot')
+class IoT(QueryResourceManager):
+
+    class resource_type(object):
+        service = 'iot'
+        enum_spec = ('list_things', 'things', None)
+        name = "thingName"
+        id = "thingName"
+        dimension = None
+        default_report_fields = (
+            'thingName',
+            'thingTypeName'
+        )

@@ -24,6 +24,7 @@ import time
 import boto3
 from botocore.client import ClientError
 import jmespath
+import six
 
 from c7n.actions import EventAction
 from c7n.cwe import CloudWatchEvents
@@ -31,6 +32,7 @@ from c7n.ctx import ExecutionContext
 from c7n.credentials import SessionFactory
 from c7n.manager import resources
 from c7n.output import DEFAULT_NAMESPACE
+from c7n.resources import load_resources
 from c7n import mu
 from c7n import utils
 from c7n.logs_support import (
@@ -41,7 +43,7 @@ from c7n.logs_support import (
 )
 from c7n.version import version
 
-from c7n.resources import load_resources
+log = logging.getLogger('c7n.policy')
 
 
 def load(options, path, format='yaml', validate=True, vars=None):
@@ -54,6 +56,10 @@ def load(options, path, format='yaml', validate=True, vars=None):
 
     if format == 'json':
         validate = False
+
+    if isinstance(data, list):
+        log.warning('yaml in invalid format. The "policies:" line is probably missing.')
+        return None
 
     # Test for empty policy file
     if not data or data.get('policies') is None:
@@ -253,7 +259,7 @@ class PolicyExecutionMode(object):
         client = session.client('cloudwatch')
 
         for m in metrics:
-            if isinstance(m, basestring):
+            if isinstance(m, six.string_types):
                 dimensions = default_dimensions
             else:
                 m, m_dimensions = m
@@ -495,7 +501,7 @@ class CloudTrailMode(LambdaMode):
         events = self.policy.data['mode'].get('events')
         assert events, "cloud trail mode requires specifiying events to subscribe"
         for e in events:
-            if isinstance(e, basestring):
+            if isinstance(e, six.string_types):
                 assert e in CloudWatchEvents.trail_events, "event shortcut not defined"
             if isinstance(e, dict):
                 jmespath.compile(e['ids'])
@@ -524,6 +530,7 @@ class ConfigRuleMode(LambdaMode):
         self.cfg_event = json.loads(event['invokingEvent'])
         cfg_item = self.cfg_event['configurationItem']
         evaluation = None
+        resources = []
         # TODO config resource type matches policy check
         if event['eventLeftScope'] or cfg_item['configurationItemStatus'] in (
                 "ResourceDeleted",

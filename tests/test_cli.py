@@ -18,10 +18,10 @@ import os
 import sys
 
 from argparse import ArgumentTypeError
-from .common import BaseTest
-from cStringIO import StringIO
 from c7n import cli, version, commands, utils
 from datetime import datetime, timedelta
+
+from .common import BaseTest, TextTestIO
 
 
 class CliTest(BaseTest):
@@ -37,8 +37,8 @@ class CliTest(BaseTest):
         return out
 
     def capture_output(self):
-        out = StringIO()
-        err = StringIO()
+        out = TextTestIO()
+        err = TextTestIO()
         self.patch(sys, 'stdout', out)
         self.patch(sys, 'stderr', err)
         return out, err
@@ -277,7 +277,7 @@ class ReportTest(CliTest):
         bad_policy_name = policy_name + '-nonexistent'
         log_output = self.capture_logging('custodian.commands')
         self.run_and_expect_failure(
-            ['custodian', 'report', '-s', temp_dir, '-p', bad_policy_name, yaml_file], 
+            ['custodian', 'report', '-s', temp_dir, '-p', bad_policy_name, yaml_file],
             1)
         self.assertIn(policy_name, log_output.getvalue())
 
